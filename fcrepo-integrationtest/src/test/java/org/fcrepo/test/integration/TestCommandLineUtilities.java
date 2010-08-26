@@ -106,6 +106,8 @@ public class TestCommandLineUtilities
                                   + "/client/demo/batch-demo/objects"),
                          new File(FEDORA_HOME
                                   + "/server/logs/junit_buildingest.log"));
+
+
         String out = sbOut.toString();
         String err = sbErr.toString();
         assertEquals("Response did not contain expected string re: FOXML XML documents: <reponse>"
@@ -150,6 +152,48 @@ public class TestCommandLineUtilities
         System.out.println("Purging batch modify object");
         purgeFast("demo:32");
         System.out.println("Batch modify test succeeded");
+    }
+
+    public void testBatchPurge() throws Exception {
+        System.out.println("Batch purging objects from file containing PIDs");
+        /* first ingest the objects */
+        batchBuildIngest(new File(FEDORA_HOME
+                                  + "/client/demo/batch-demo/foxml-template.xml"),
+                         new File(FEDORA_HOME
+                                  + "/client/demo/batch-demo/object-specifics"),
+                         new File(FEDORA_HOME
+                                  + "/client/demo/batch-demo/objects"),
+                         new File(FEDORA_HOME
+                                  + "/server/logs/junit_buildingestpurge.log"));
+        /* try to purge from a bogus file */
+        batchPurge(new File("/bogus/file"));
+        String out = sbOut.toString();
+        String err = sbErr.toString();
+        assertEquals("Response did not contain expected string re: java.io.FileNotFoundException: <reponse>"
+                     + err + "</response>",
+                     err.indexOf("java.io.FileNotFoundException") != -1,
+                     true);
+        /* try to purge the objects from the valid file */
+        batchPurge(new File("src/test/resources/test-objects/test-batch-purge-file.txt"));
+        out = sbOut.toString();
+        err = sbErr.toString();
+        assertEquals("Response did not contain expected string re: objects successfully purged: <reponse>"
+                     + out + "</response>",
+                     out.indexOf("10 objects successfully purged.") != -1,
+                     true);
+        /* make sure they're gone */
+        batchPurge(new File("src/test/resources/test-objects/test-batch-purge-file.txt"));
+        out = sbOut.toString();
+        err = sbErr.toString();
+        assertEquals("Response did not contain expected string re: ObjectNotInLowlevelStorageException: <reponse>"
+                     + err + "</response>",
+                     err.indexOf("ObjectNotInLowlevelStorageException") != -1,
+                     true);
+        assertEquals("Response did not contain expected string re: objects successfully purged: <reponse>"
+                     + out + "</response>",
+                     out.indexOf("0 objects successfully purged.") != -1,
+                     true);
+        System.out.println("Batch purge test succeeded");
     }
 
     public void testExport() {
@@ -339,6 +383,17 @@ public class TestCommandLineUtilities
                 getUsername(),
                 getPassword(),
                 getProtocol(),
+                getFedoraAppServerContext());
+    }
+
+    private void batchPurge(File objectPurgeFile) {
+        execute(FEDORA_HOME + "/client/bin/fedora-purge",
+                getHost() + ":" + getPort(),
+                getUsername(),
+                getPassword(),
+                "file://" + objectPurgeFile.getAbsolutePath(),
+                getProtocol(),
+                "because",
                 getFedoraAppServerContext());
     }
 
